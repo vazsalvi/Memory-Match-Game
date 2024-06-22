@@ -1,0 +1,148 @@
+import tkinter as tk
+from tkinter import messagebox
+import random
+
+class MemoryMatchGame:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Memory Match Game")
+        self.canvas = tk.Canvas(self.root, width=500, height=500, bg="white")
+        self.canvas.pack()
+        self.difficulty = None
+        self.cards = []
+        self.first_card = None
+        self.second_card = None
+        self.matches = 0
+        self.card_size = 80
+        self.images = []
+        self.create_start_screen()
+
+    def create_start_screen(self):
+        self.canvas.delete("all")
+        self.canvas.config(width=500, height=500)
+        self.canvas.create_text(250, 100, text="Memory Match Game", font=("Arial", 24))
+        self.canvas.create_text(250, 150, text="Select Difficulty", font=("Arial", 18))
+        
+        self.easy_button = self.canvas.create_rectangle(100, 200, 200, 250, fill="lightblue", outline="black")
+        self.canvas.create_text(150, 225, text="Easy", font=("Arial", 16))
+
+        self.medium_button = self.canvas.create_rectangle(300, 200, 400, 250, fill="lightgreen", outline="black")
+        self.canvas.create_text(350, 225, text="Medium", font=("Arial", 16))
+
+        self.hard_button = self.canvas.create_rectangle(200, 300, 300, 350, fill="lightcoral", outline="black")
+        self.canvas.create_text(250, 325, text="Hard", font=("Arial", 16))
+
+        self.start_button = self.canvas.create_rectangle(200, 400, 300, 450, fill="yellow", outline="black")
+        self.canvas.create_text(250, 425, text="Start", font=("Arial", 16))
+
+        self.canvas.bind("<Button-1>", self.on_start_screen_click)
+
+    def on_start_screen_click(self, event):
+        x, y = event.x, event.y
+        
+        if self.canvas.find_closest(x, y)[0] == self.easy_button:
+            self.difficulty = "easy"
+            self.canvas.itemconfig(self.easy_button, fill="blue")
+            self.canvas.itemconfig(self.medium_button, fill="lightgreen")
+            self.canvas.itemconfig(self.hard_button, fill="lightcoral")
+        elif self.canvas.find_closest(x, y)[0] == self.medium_button:
+            self.difficulty = "medium"
+            self.canvas.itemconfig(self.easy_button, fill="lightblue")
+            self.canvas.itemconfig(self.medium_button, fill="green")
+            self.canvas.itemconfig(self.hard_button, fill="lightcoral")
+        elif self.canvas.find_closest(x, y)[0] == self.hard_button:
+            self.difficulty = "hard"
+            self.canvas.itemconfig(self.easy_button, fill="lightblue")
+            self.canvas.itemconfig(self.medium_button, fill="lightgreen")
+            self.canvas.itemconfig(self.hard_button, fill="red")
+        elif self.canvas.find_closest(x, y)[0] == self.start_button and self.difficulty:
+            self.canvas.delete("all")
+            self.start_game()
+
+    def start_game(self):
+        if self.difficulty == "easy":
+            self.grid_size = 4
+        elif self.difficulty == "medium":
+            self.grid_size = 6
+        else:
+            self.grid_size = 8
+
+        self.images = list(range(1, (self.grid_size ** 2 // 2) + 1)) * 2
+        random.shuffle(self.images)
+        self.matches = 0
+        self.cards = []
+        self.first_card = None
+        self.second_card = None
+
+        self.create_board()
+
+    def create_board(self):
+        self.canvas.delete("all")
+        self.canvas.config(width=self.grid_size * self.card_size + 20, height=self.grid_size * self.card_size + 20)
+        for i in range(self.grid_size):
+            row = []
+            for j in range(self.grid_size):
+                x = j * self.card_size + 10
+                y = i * self.card_size + 10
+                card = self.canvas.create_rectangle(x, y, x + self.card_size, y + self.card_size, fill="gray", outline="black")
+                row.append(card)
+            self.cards.append(row)
+        
+        self.canvas.bind("<Button-1>", self.on_card_click)
+
+    def on_card_click(self, event):
+        if self.first_card and self.second_card:
+            return
+        
+        x, y = event.x, event.y
+        col, row = x // self.card_size, y // self.card_size
+        
+        if row < 0 or row >= self.grid_size or col < 0 or col >= self.grid_size:
+            return
+        
+        card = self.cards[row][col]
+        if self.canvas.itemcget(card, "fill") == "gray":
+            self.canvas.itemconfig(card, fill="white")
+            self.canvas.create_text(col * self.card_size + 30, row * self.card_size + 30, text=str(self.images[row * self.grid_size + col]), tags=("text", f"text_{row}_{col}"), font=("Arial", 24))
+            
+            if not self.first_card:
+                self.first_card = (row, col)
+            else:
+                self.second_card = (row, col)
+                self.canvas.after(500, self.check_match)
+
+    def check_match(self):
+        row1, col1 = self.first_card
+        row2, col2 = self.second_card
+        index1 = row1 * self.grid_size + col1
+        index2 = row2 * self.grid_size + col2
+
+        if self.images[index1] == self.images[index2]:
+            self.matches += 1
+            if self.matches == self.grid_size ** 2 // 2:
+                messagebox.showinfo("Memory Match Game", "Congratulations! You've matched all pairs!")
+                self.reset_game()
+        else:
+            card1 = self.cards[row1][col1]
+            card2 = self.cards[row2][col2]
+            self.canvas.itemconfig(card1, fill="gray")
+            self.canvas.itemconfig(card2, fill="gray")
+            self.canvas.delete(f"text_{row1}_{col1}")
+            self.canvas.delete(f"text_{row2}_{col2}")
+
+        self.first_card = None
+        self.second_card = None
+
+    def reset_game(self):
+        self.difficulty = None
+        self.cards = []
+        self.first_card = None
+        self.second_card = None
+        self.matches = 0
+        self.images = []
+        self.create_start_screen()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    game = MemoryMatchGame(root)
+    root.mainloop()
